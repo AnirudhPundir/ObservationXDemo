@@ -48,7 +48,7 @@ def search_faiss_DB(query, top_k=3):
 # for q, a, score in results: 
 #     print("Similar Question: {q}\n Answer: {a} \n Distance: {score}\n")
 # user_input
-def chat_with_ollama():
+def chat_with_ollama(user_input):
     print("Chatbot (Deepseek R1) is ready! Type 'exit' to quit ")
 
     # Retrieve similar knowledge from FAISS
@@ -95,6 +95,11 @@ def chat_with_ollama():
     ### Input Query:
     {user_input}
 
+    ### **Instructions:**
+    - Extract and return only the JSON.
+    - Do not provide any explanations, reasoning, or extra text.
+    - Ensure correct data types and formatting.
+
     ### Expected JSON Output:
     ```json
     {{
@@ -124,9 +129,9 @@ def chat_with_ollama():
 
     print(1)
 
-    print(response["message"]["content"])
+    print({"Response": response["message"]["content"]})
 
-    # return response
+    return response
 
-if __name__ == "__main__":
-    chat_with_ollama()
+# if __name__ == "__main__":
+#     chat_with_ollama()
