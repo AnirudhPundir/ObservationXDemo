@@ -60,7 +60,7 @@ def chat_with_ollama(user_input):
     #         print("Chatbot: Goodbye!")
     #         break
 
-    user_input = "create an observation for oil spill in kitchen"
+    # user_input = "create an observation for oil spill in kitchen"
 
     context = search_faiss(user_input, result["index"], result["df"])
 
