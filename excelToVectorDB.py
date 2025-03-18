@@ -3,6 +3,7 @@ import numpy as np
 import faiss
 from sentence_transformers import SentenceTransformer
 import time
+import pinecone  # Add this import for Pinecone
 
 def convertExcelToVDB():
     pass  # Add this placeholder statement until you implement the function
@@ -24,35 +25,37 @@ def convertExcelToVDB():
 
     #Generate embeddings for each row
     embeddings = model.encode(df["combined_text"].tolist())
+    
     embeddings = np.array(embeddings).astype('float32')
 
-    #Create a FAISS index
+    # Initialize Pinecone
+    pinecone.init(api_key='YOUR_API_KEY', environment='YOUR_ENVIRONMENT')  # Replace with your Pinecone API key and environment
+    index_name = "your_index_name"  # Specify your index name
     dimension = embeddings.shape[1]
-    index = faiss.IndexFlatL2(dimension)
-    index.add(embeddings)
+    if index_name not in pinecone.list_indexes():
+        pinecone.create_index(index_name, dimension)  # Create index if it doesn't exist
+    index = pinecone.Index(index_name)  # Connect to the index
 
-    #Save the FAISS index
-    faiss.write_index(index, "observations.index")
+    # Add embeddings to Pinecone
+    index.upsert(vectors=[(str(i), embedding) for i, embedding in enumerate(embeddings)])  # Upsert embeddings
 
-    print(f"Stored {len(embeddings)} embeddings in FAISS.")
+    print(f"Stored {len(embeddings)} embeddings in Pinecone.")
 
-
-    #Searching Example 
+    # Searching Example 
     # query_text = "Signs and Barrier issue in Raleigh"
     # query_embedding = model.encode([query_text]).astype('float32')
 
     # top_k = 5
-    # D, I = index.search(query_embedding, top_k)
+    # results = index.query(query_embedding.tolist(), top_k=top_k)  # Update to use Pinecone query
 
-    # print("Nearest neighbours indices:", I)
-    # print("Distances: ", D)
+    # print("Nearest neighbours indices:", [match.id for match in results.matches])
+    # print("Distances: ", [match.score for match in results.matches])
 
     # Display the retrieved records
-    # print("\n ** Top Similar Obeservations: **\n")
-    # for i, idx in enumerate(I[0]):
-    #     if idx < len(df):
-    #         print(f"Rank {i+1}: {df.iloc[idx].to_dict()}")
-    #         print(f"Distance Score: {D[0][i]}\n")
+    # print("\n ** Top Similar Observations: **\n")
+    # for i, match in enumerate(results.matches):
+    #     print(f"Rank {i+1}: {df.iloc[int(match.id)].to_dict()}")
+    #     print(f"Distance Score: {match.score}\n")
 
     end_time = time.time()
     elapsed_time = end_time - start_time

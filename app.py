@@ -5,9 +5,24 @@ import faiss;
 import numpy as np;
 from excelToVectorDB import convertExcelToVDB;
 import time
+import os
+from dotenv import load_dotenv
+from pinecone import Pinecone
 
-model = SentenceTransformer("paraphrase-MiniLM-L6-v2")
+load_dotenv()
 
+# model = SentenceTransformer("paraphrase-MiniLM-L6-v2")
+
+
+file_path = "./data.xlsx"
+
+pinecone_api_key = os.getenv("PINECONE_API_KEY")
+
+pc = Pinecone(api_key=pinecone_api_key)
+
+index_name = "observations"
+
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
 def search_faiss(query, index, df, top_k=3):
     #Searching Example 
@@ -28,7 +43,7 @@ def search_faiss(query, index, df, top_k=3):
 
 def search_faiss_DB(query, top_k=3):
     index = faiss.read_index("observations.index")
-    model = SentenceTransformer("paraphrase-MiniLM-L6-v2")
+    # model = SentenceTransformer("paraphrase-MiniLM-L6-v2")
     query_embedding = model.encode([query]).astype('float32')
     distance, indices = index.search(query_embedding, top_k)
     retrieved_context = []
@@ -38,6 +53,46 @@ def search_faiss_DB(query, top_k=3):
     context = "\n".join(retrieved_context)
 
     return context
+
+def search_pinecone_db(index_name, query, top_k=3):
+    
+    existing_indexes = pc.list_indexes()
+
+    exists = any(index['name'] == index_name for index in existing_indexes)
+
+    if not exists:
+        return "Index Missing"
+    
+    while not pc.describe_index(index_name).status['ready']:
+        time.sleep(1)
+    
+    index = pc.Index(index_name)
+
+    #fetch the embedding model
+    start_embedding_time = time.time()  # Start time for embedding creation
+
+    #create embedding for requested query
+    query_embedding = model.encode([query]).tolist()
+    end_embedding_time = time.time()  # End time for embedding creation
+
+    embedding_elapsed_time = end_embedding_time - start_embedding_time  # Calculate elapsed time for embedding creation
+    print(f"Embedding Time Taken: {embedding_elapsed_time}")  # Print the time taken for embedding creation
+
+    start_query_time = time.time()  # Start time for the query
+    results = index.query(vector=query_embedding[0], top_k=top_k, include_metadata=True, namespace="ns1")
+    end_query_time = time.time()  # End time for the query
+
+    query_elapsed_time = end_query_time - start_query_time  # Calculate elapsed time for the query
+    print(f"Query Time Taken: {query_elapsed_time}")  # Print the time taken for the query
+
+    #fetch the metadata from retrieved indexes
+    retrieved_context = [match["metadata"]["text"] for match in results["matches"]]
+
+    #concatenate the data
+    context = "\n".join(retrieved_context)
+
+    return context
+
 
 
 #Example 
@@ -52,7 +107,7 @@ def chat_with_ollama(user_input):
     print("Chatbot (Deepseek R1) is ready! Type 'exit' to quit ")
 
     # Retrieve similar knowledge from FAISS
-    result = convertExcelToVDB()
+    # result = convertExcelToVDB()
 
     # while(True):
     #     user_input = input("You: ")
@@ -62,7 +117,10 @@ def chat_with_ollama(user_input):
 
     # user_input = "create an observation for oil spill in kitchen"
 
-    context = search_faiss(user_input, result["index"], result["df"])
+    # context = search_faiss(user_input, result["index"], result["df"])
+    context = search_pinecone_db(index_name, query=user_input, top_k=3)
+
+    print(f"{context}")
 
     start_time = time.time()
 
@@ -120,6 +178,7 @@ def chat_with_ollama(user_input):
     ```
     """
 
+    #Reduce the time by setting up the max tokens
     response = ollama.chat(model="deepseek-r1:1.5b", messages=[{"role": "user", "content": prompt}])
 
     end_time = time.time()
