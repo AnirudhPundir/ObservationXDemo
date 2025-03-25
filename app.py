@@ -8,11 +8,13 @@ import time
 import os
 from dotenv import load_dotenv
 from pinecone import Pinecone
+import openai
 
 load_dotenv()
 
 # model = SentenceTransformer("paraphrase-MiniLM-L6-v2")
 
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 file_path = "./data.xlsx"
 
@@ -118,7 +120,17 @@ def chat_with_ollama(user_input):
     # user_input = "create an observation for oil spill in kitchen"
 
     # context = search_faiss(user_input, result["index"], result["df"])
-    context = search_pinecone_db(index_name, query=user_input, top_k=3)
+
+    prompt = f"Analyze inputs: '{user_input}', and provide a final observation."
+
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}]
+    )
+    result = response["choices"][0]["message"]["content"]
+
+    print(f"{result}")
+    context = search_pinecone_db(index_name, query=result, top_k=3)
 
     print(f"{context}")
 
