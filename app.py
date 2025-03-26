@@ -198,8 +198,6 @@ def chat_with_ollama(user_input):
 
     print(f"Time Taken: {elapsed_time}")
 
-    print(1)
-
     print({"Response": response["message"]["content"]})
 
     return response
