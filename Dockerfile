@@ -22,7 +22,7 @@ COPY . .
 
 
 #Expose port 8000 for FAST API
-EXPOSE 8000
+EXPOSE 8000 11434
 
 #Start the FASTAPI server when the container runs
-CMD ollama serve & uvicorn server:app --host 0.0.0.0 --port 8000
+CMD ollama serve --host 0.0.0.0 & uvicorn server:app --host 0.0.0.0 --port 8000
